@@ -40,6 +40,17 @@ def _require_manual_session(request: Request, run_id: str) -> dict:
     return sess
 
 
+def _play_sessions(request: Request) -> dict:
+    if not hasattr(request.app.state, "play_sessions"):
+        request.app.state.play_sessions = {}
+    return request.app.state.play_sessions
+
+
+def _raise_if_play_active(request: Request, run_id: str) -> None:
+    if run_id in _play_sessions(request):
+        raise HTTPException(status_code=409, detail="play session active")
+
+
 def _adapter_for(game: str):
     if game == "emerald":
         return EmeraldAdapter()
@@ -199,6 +210,7 @@ async def stop_run(run_id: str, request: Request) -> dict:
 
 @router.post("/{run_id}/press")
 async def press_button(run_id: str, body: PressRequest, request: Request) -> dict:
+    _raise_if_play_active(request, run_id)
     sess = _require_manual_session(request, run_id)
     sess["emulator"].press_button(body.button, frames=body.frames)
     return {"pressed": body.button, "frames": body.frames}
@@ -206,6 +218,7 @@ async def press_button(run_id: str, body: PressRequest, request: Request) -> dic
 
 @router.post("/{run_id}/wait")
 async def wait_frames(run_id: str, body: WaitRequest, request: Request) -> dict:
+    _raise_if_play_active(request, run_id)
     sess = _require_manual_session(request, run_id)
     sess["emulator"].wait(body.frames)
     return {"waited": body.frames}
