@@ -93,11 +93,11 @@ TARGET_FRAME_S = 1/60
 
 while not cancelled:
     t0 = perf_counter()
-    emulator.core.set_keys(session.held_keys)
-    emulator.core.run_frame()
+    emulator.set_keys(session.held_keys)
+    emulator.run_frame()
     session.frame_counter += 1
 
-    jpeg = encode_jpeg(emulator.framebuffer)
+    jpeg = encode_jpeg(emulator.framebuffer_image())
     await broadcast(session.clients, jpeg)
 
     # idle auto-stop: 30s after last client disconnect
@@ -110,6 +110,10 @@ while not cancelled:
     if dt < TARGET_FRAME_S:
         await asyncio.sleep(TARGET_FRAME_S - dt)
 ```
+
+`set_keys`, `run_frame`, `framebuffer_image` are thin accessors added to
+`GBAEmulator` in `pokebenchmark-emulator` (see Task 1). They exist so the
+play loop never reaches into `emulator.gba.core` internals.
 
 Thread safety: no lock on `held_keys`. Single writer (WS handler coroutine),
 single reader (loop coroutine), both on the same event loop, writes of a
@@ -197,17 +201,17 @@ src/
 ### `api/play.ts`
 
 - Dedicated WS client (not shared with existing `api/websocket.ts`)
-- Key mapping (matches existing `ManualControls`):
+- Key mapping (matches existing `ManualControls` exactly):
 
-| Keyboard        | GBA       |
-|-----------------|-----------|
+| Keyboard                | GBA    |
+|-------------------------|--------|
 | ArrowUp/Down/Left/Right | Up/Down/Left/Right |
-| z               | A         |
-| x               | B         |
-| Enter           | Start     |
-| Backspace       | Select    |
-| a               | L         |
-| s               | R         |
+| z                       | B      |
+| x                       | A      |
+| a                       | L      |
+| s                       | R      |
+| Enter                   | Start  |
+| Shift                   | Select |
 
 Unmapped keys ignored.
 
