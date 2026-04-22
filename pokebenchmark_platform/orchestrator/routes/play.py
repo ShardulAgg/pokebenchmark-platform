@@ -54,8 +54,10 @@ async def stop_play(run_id: str, request: Request):
         session.loop_task.cancel()
         try:
             await session.loop_task
-        except (asyncio.CancelledError, Exception):
+        except asyncio.CancelledError:
             pass
+        except Exception:
+            log.exception("play: loop crashed during stop for run %s", run_id)
 
     for ws in list(session.clients):
         try:
