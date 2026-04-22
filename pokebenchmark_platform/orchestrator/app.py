@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pokebenchmark_platform.catalog.db import CatalogDB
 from pokebenchmark_platform.orchestrator.container_manager import ContainerManager
-from pokebenchmark_platform.orchestrator.routes import catalog, games, runs, skills, ws
+from pokebenchmark_platform.orchestrator.routes import catalog, games, play, runs, skills, ws
 
 
 def create_app(
@@ -26,6 +26,7 @@ def create_app(
         app.state.db = db
         app.state.container_image = container_image
         app.state.container_manager = None  # Lazy-initialized on first use
+        app.state.play_sessions = {}
         yield
         # Shutdown
         await db.close()
@@ -45,6 +46,7 @@ def create_app(
     app.include_router(games.router, prefix="/api/games", tags=["games"])
     app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
     app.include_router(ws.router, prefix="/ws", tags=["websocket"])
+    app.include_router(play.router, prefix="/api/play", tags=["play"])
 
     @app.get("/api/health", tags=["health"])
     async def health() -> dict:
