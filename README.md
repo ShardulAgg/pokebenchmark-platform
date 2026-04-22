@@ -1,6 +1,6 @@
 # pokebenchmark
 
-The benchmarking orchestrator — spawn LLM agent runs (or manual human runs) against Pokemon GBA ROMs, catalog save states, track per-run results, and serve a REST/WebSocket API to the [dashboard](https://github.com/ShardulAgg/pokebenchmark-dashboard).
+The benchmarking orchestrator — spawn LLM agent runs (or manual human runs) against Pokemon GBA ROMs, catalog save states, track per-run results, and serve a REST/WebSocket API to the [dashboard](https://github.com/ConvoSearch/pokebenchmark-dashboard).
 
 ## Architecture
 
@@ -22,7 +22,7 @@ The benchmarking orchestrator — spawn LLM agent runs (or manual human runs) ag
     └──────────────┘  └───────────┘
 ```
 
-- **Agent runs** are spawned in Docker containers running the [pokebenchmark-agent](https://github.com/ShardulAgg/pokebenchmark-agent) session runner.
+- **Agent runs** are spawned in Docker containers running the [pokebenchmark-agent](https://github.com/ConvoSearch/pokebenchmark-agent) session runner.
 - **Manual runs** host an emulator session inside the orchestrator process; the dashboard drives it via `/api/runs/{id}/press`, `/wait`, `/save-state`, etc.
 
 ## Components in this repo
@@ -42,9 +42,9 @@ Orchestrator on `:8000`, dashboard proxies through on `:3000`.
 
 ## Related repos
 
-- [pokebenchmark-emulator](https://github.com/ShardulAgg/pokebenchmark-emulator) — GBA wrapper + game adapters
-- [pokebenchmark-agent](https://github.com/ShardulAgg/pokebenchmark-agent) — LLM agent runtime
-- [pokebenchmark-dashboard](https://github.com/ShardulAgg/pokebenchmark-dashboard) — React UI
+- [pokebenchmark-emulator](https://github.com/ConvoSearch/pokebenchmark-emulator) — GBA wrapper + game adapters
+- [pokebenchmark-agent](https://github.com/ConvoSearch/pokebenchmark-agent) — LLM agent runtime
+- [pokebenchmark-dashboard](https://github.com/ConvoSearch/pokebenchmark-dashboard) — React UI
 
 ## License
 
