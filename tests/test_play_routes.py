@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from pokebenchmark_platform.orchestrator.routes.play import router as play_router
+from pokebenchmark_platform.orchestrator.routes.play import router as play_router, ws_router as play_ws_router
 from pokebenchmark_platform.orchestrator.play.session import PlaySession
 
 
@@ -22,6 +22,7 @@ def build_app_with_manual(run_id: str | None = "r-1"):
         app.state.manual_sessions[run_id] = {"emulator": emu}
 
     app.include_router(play_router, prefix="/api/play")
+    app.include_router(play_ws_router, prefix="/ws/play")
     return app
 
 
@@ -79,7 +80,7 @@ def test_ws_rejects_when_no_session():
     app = build_app_with_manual()
     with TestClient(app) as c:
         with pytest.raises(WebSocketDisconnect):
-            with c.websocket_connect("/api/play/r-1/ws"):
+            with c.websocket_connect("/ws/play/r-1"):
                 pass
 
 
@@ -91,7 +92,7 @@ def test_ws_keydown_sets_bit_and_keyup_clears():
     app.state.play_sessions["r-1"] = session
 
     with TestClient(app) as c:
-        with c.websocket_connect("/api/play/r-1/ws") as ws:
+        with c.websocket_connect("/ws/play/r-1") as ws:
             # reset_keys first so Right is pressed after the reset
             ws.send_json({"t": "reset_keys"})
             # Round-trip by sending a 2nd msg; server processes in order
@@ -112,7 +113,7 @@ def test_ws_accepts_reset_keys():
     app.state.play_sessions["r-1"] = session
 
     with TestClient(app) as c:
-        with c.websocket_connect("/api/play/r-1/ws") as ws:
+        with c.websocket_connect("/ws/play/r-1") as ws:
             ws.send_json({"t": "reset_keys"})
         assert session.held_keys == 0
 
@@ -124,6 +125,6 @@ def test_ws_ignores_unknown_key():
     app.state.play_sessions["r-1"] = session
 
     with TestClient(app) as c:
-        with c.websocket_connect("/api/play/r-1/ws") as ws:
+        with c.websocket_connect("/ws/play/r-1") as ws:
             ws.send_json({"t": "down", "k": "Turbo"})
         assert session.held_keys == 0

@@ -10,7 +10,8 @@ from pokebenchmark_platform.orchestrator.play.loop import run_play_loop
 from pokebenchmark_platform.orchestrator.play.session import PlaySession
 
 log = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter()       # HTTP routes, mounted at /api/play
+ws_router = APIRouter()    # WS routes, mounted at /ws/play
 
 
 def _play_sessions(request_or_ws) -> dict:
@@ -69,7 +70,7 @@ async def stop_play(run_id: str, request: Request):
     return {"frames": session.frame_counter}
 
 
-@router.websocket("/{run_id}/ws")
+@ws_router.websocket("/{run_id}")
 async def play_ws(websocket: WebSocket, run_id: str):
     sessions = _play_sessions(websocket)
     session = sessions.get(run_id)

@@ -47,6 +47,7 @@ def create_app(
     app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
     app.include_router(ws.router, prefix="/ws", tags=["websocket"])
     app.include_router(play.router, prefix="/api/play", tags=["play"])
+    app.include_router(play.ws_router, prefix="/ws/play", tags=["play-ws"])
 
     @app.get("/api/health", tags=["health"])
     async def health() -> dict:
