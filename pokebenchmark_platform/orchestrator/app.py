@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pokebenchmark_platform.catalog.db import CatalogDB
+
+log = logging.getLogger(__name__)
 from pokebenchmark_platform.orchestrator.container_manager import ContainerManager
 from pokebenchmark_platform.orchestrator.routes import catalog, games, play, recordings, runs, skills, ws
 
@@ -27,6 +31,20 @@ def create_app(
         app.state.container_image = container_image
         app.state.container_manager = None  # Lazy-initialized on first use
         app.state.play_sessions = {}
+
+        # Reconcile: any manual run left in 'running'/'pending' from a prior
+        # boot is a phantom now — its in-memory emulator and RunRecorder are
+        # gone. Mark them stopped so the UI doesn't show them as live.
+        now = datetime.now(timezone.utc)
+        stale_count = 0
+        for status in ("running", "pending"):
+            for run in await db.list_runs(status=status):
+                if run.model_provider == "manual":
+                    await db.update_run(run.id, status="stopped", finished_at=now)
+                    stale_count += 1
+        if stale_count:
+            log.info("startup: reconciled %d stale manual run(s) to stopped", stale_count)
+
         yield
         # Shutdown
         await db.close()
