@@ -11,6 +11,7 @@ class PlaySession:
     emulator: Any  # GBAEmulator — typed loosely to avoid a hard import cycle
     adapter: Any = None  # GameAdapter; None disables state broadcasts
     held_keys: int = 0
+    speed: int = 1  # emulator frames advanced per broadcast tick (VBA-style fast-forward)
     clients: set = field(default_factory=set)
     loop_task: "asyncio.Task | None" = None
     frame_counter: int = 0

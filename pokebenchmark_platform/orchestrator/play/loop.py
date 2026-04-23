@@ -22,8 +22,13 @@ async def run_play_loop(session: PlaySession) -> None:
             t0 = perf_counter()
 
             session.emulator.set_keys(session.held_keys)
-            session.emulator.run_frame()
-            session.frame_counter += 1
+            # Speed > 1 means "fast-forward": run N emulator frames per
+            # broadcast tick. The broadcast rate stays at ~60 FPS so we don't
+            # flood the network; only the emulator progresses faster.
+            speed = max(1, min(session.speed, 16))
+            for _ in range(speed):
+                session.emulator.run_frame()
+            session.frame_counter += speed
 
             img = session.emulator.framebuffer_image()
             jpeg = encode_jpeg(img)

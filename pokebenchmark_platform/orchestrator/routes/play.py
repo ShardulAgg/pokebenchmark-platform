@@ -115,6 +115,10 @@ async def play_ws(websocket: WebSocket, run_id: str):
                     session.held_keys &= ~bit(k)
             elif t == "reset_keys":
                 session.held_keys = 0
+            elif t == "speed":
+                v = msg.get("v")
+                if isinstance(v, int) and 1 <= v <= 16:
+                    session.speed = v
             else:
                 log.debug("play: unknown ws msg type %r", t)
     except WebSocketDisconnect:
