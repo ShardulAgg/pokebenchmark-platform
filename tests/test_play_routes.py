@@ -128,3 +128,36 @@ def test_ws_ignores_unknown_key():
         with c.websocket_connect("/ws/play/r-1") as ws:
             ws.send_json({"t": "down", "k": "Turbo"})
         assert session.held_keys == 0
+
+
+def test_start_evicts_session_when_loop_crashes():
+    """If run_play_loop raises, the session should be removed so a re-start works."""
+    import asyncio as _asyncio
+    app = build_app_with_manual()
+    # Make the emulator crash on set_keys, which run_play_loop calls every iteration
+    emu = app.state.manual_sessions["r-1"]["emulator"]
+    emu.set_keys.side_effect = RuntimeError("emulator exploded")
+
+    with TestClient(app) as c:
+        r = c.post("/api/play/r-1/start")
+        assert r.status_code == 200
+
+        # Give the loop a chance to crash and the done_callback to run
+        import time
+        for _ in range(20):
+            if "r-1" not in app.state.play_sessions:
+                break
+            time.sleep(0.05)
+
+        # After the crash, the session should be gone
+        assert "r-1" not in app.state.play_sessions
+
+        # And we should be able to start again
+        emu.set_keys.side_effect = None  # let the next loop run cleanly
+        r2 = c.post("/api/play/r-1/start")
+        assert r2.status_code == 200
+
+        # Cleanup
+        session = app.state.play_sessions.get("r-1")
+        if session is not None and session.loop_task is not None:
+            session.loop_task.cancel()

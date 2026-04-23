@@ -40,6 +40,18 @@ async def start_play(run_id: str, request: Request):
 
     session = PlaySession(run_id=run_id, emulator=manual["emulator"])
     session.loop_task = asyncio.create_task(run_play_loop(session))
+
+    def _on_loop_done(task: asyncio.Task) -> None:
+        # On loop crash (non-cancellation), evict the session so future /start
+        # isn't blocked by a 409 on a dead task.
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            log.error("play: loop crashed for run %s; evicting session", run_id, exc_info=exc)
+            sessions.pop(run_id, None)
+
+    session.loop_task.add_done_callback(_on_loop_done)
     sessions[run_id] = session
     return {"run_id": run_id}
 
