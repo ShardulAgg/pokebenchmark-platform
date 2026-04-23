@@ -30,13 +30,16 @@ def _manual_sessions(request_or_ws) -> dict:
 
 @router.post("/{run_id}/start")
 async def start_play(run_id: str, request: Request):
+    sessions = _play_sessions(request)
+    if run_id in sessions:
+        # Idempotent: existing session survives a duplicate start. The popup
+        # will attach to it via the WS route regardless. This also defangs
+        # React StrictMode double-mount in dev.
+        return {"run_id": run_id, "reused": True}
+
     manual = _manual_sessions(request).get(run_id)
     if manual is None:
         raise HTTPException(status_code=404, detail="no active manual session for this run")
-
-    sessions = _play_sessions(request)
-    if run_id in sessions:
-        raise HTTPException(status_code=409, detail="play session already active")
 
     session = PlaySession(run_id=run_id, emulator=manual["emulator"])
     session.loop_task = asyncio.create_task(run_play_loop(session))

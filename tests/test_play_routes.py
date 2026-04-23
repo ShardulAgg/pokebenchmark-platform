@@ -45,16 +45,24 @@ def test_start_creates_session_and_returns_200():
             session.loop_task.cancel()
 
 
-def test_start_twice_returns_409():
+def test_start_twice_is_idempotent():
+    """Duplicate start returns 200 and reuses the existing session — defangs
+    React StrictMode double-mount in dev. WS is the source of truth for who
+    can observe the session."""
     app = build_app_with_manual()
     with TestClient(app) as c:
-        c.post("/api/play/r-1/start")
-        r = c.post("/api/play/r-1/start")
-        assert r.status_code == 409
+        r1 = c.post("/api/play/r-1/start")
+        assert r1.status_code == 200
+        session_before = app.state.play_sessions["r-1"]
+
+        r2 = c.post("/api/play/r-1/start")
+        assert r2.status_code == 200
+        assert r2.json().get("reused") is True
+        assert app.state.play_sessions["r-1"] is session_before  # same object
+
         # Clean up
-        session = app.state.play_sessions["r-1"]
-        if session.loop_task is not None:
-            session.loop_task.cancel()
+        if session_before.loop_task is not None:
+            session_before.loop_task.cancel()
 
 
 def test_stop_returns_404_when_no_session():
