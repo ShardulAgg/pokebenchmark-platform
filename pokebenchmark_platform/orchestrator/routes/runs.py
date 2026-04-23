@@ -277,9 +277,9 @@ async def save_run_state(run_id: str, body: SaveRunStateRequest, request: Reques
         timestamp=datetime.now(timezone.utc),
         label=body.label,
         run_id=run_id,
-        badges=len(gs.badges),
+        badges=len(gs.badges) if gs.badges is not None else 0,
         location=gs.location,
-        party_levels=",".join(str(p.get("level", 0)) for p in gs.party),
+        party_levels=",".join(str(p.get("level", 0)) for p in (gs.party or [])),
     )
     await db.add_save_state(entry)
     return entry.to_dict()
