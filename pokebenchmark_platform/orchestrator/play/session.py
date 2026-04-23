@@ -16,3 +16,5 @@ class PlaySession:
     loop_task: "asyncio.Task | None" = None
     frame_counter: int = 0
     last_client_disconnect_at: float | None = None
+    recorder: Any = None            # VideoRecorder writing to recording_path
+    recording_path: str | None = None

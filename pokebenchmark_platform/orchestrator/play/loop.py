@@ -3,20 +3,51 @@ import asyncio
 import dataclasses
 import json
 import logging
+import os
+from datetime import datetime, timezone
 from time import perf_counter
 
 from pokebenchmark_platform.orchestrator.play.encoding import encode_jpeg
 from pokebenchmark_platform.orchestrator.play.session import PlaySession
+from pokebenchmark_platform.recording.recorder import VideoRecorder
 
 log = logging.getLogger(__name__)
 
 TARGET_FRAME_S = 1 / 60
 IDLE_TIMEOUT_S = 30.0
 STATE_INTERVAL_FRAMES = 30  # ~2 Hz state broadcasts at 60 FPS
+RECORDINGS_ROOT = "data/recordings"
+
+
+def _open_recorder(session: PlaySession) -> None:
+    run_dir = os.path.join(RECORDINGS_ROOT, session.run_id)
+    os.makedirs(run_dir, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    path = os.path.join(run_dir, f"{ts}.mp4")
+    try:
+        recorder = VideoRecorder(output_path=path, width=240, height=160, fps=60)
+        recorder.start()
+        session.recorder = recorder
+        session.recording_path = path
+    except Exception:
+        log.exception("play: failed to start recorder for run %s", session.run_id)
+        session.recorder = None
+        session.recording_path = None
+
+
+def _close_recorder(session: PlaySession) -> None:
+    if session.recorder is None:
+        return
+    try:
+        session.recorder.stop()
+    except Exception:
+        log.exception("play: failed to stop recorder for run %s", session.run_id)
+    session.recorder = None
 
 
 async def run_play_loop(session: PlaySession) -> None:
     """Run the play loop for a session until cancelled or idle timeout."""
+    _open_recorder(session)
     try:
         while True:
             t0 = perf_counter()
@@ -33,6 +64,13 @@ async def run_play_loop(session: PlaySession) -> None:
             img = session.emulator.framebuffer_image()
             jpeg = encode_jpeg(img)
             await _broadcast_binary(session, jpeg)
+
+            if session.recorder is not None:
+                try:
+                    session.recorder.write_frame(img)
+                except Exception:
+                    log.exception("play: write_frame failed; disabling recorder for run %s", session.run_id)
+                    _close_recorder(session)
 
             if session.frame_counter % STATE_INTERVAL_FRAMES == 0 and session.adapter is not None:
                 try:
@@ -61,6 +99,8 @@ async def run_play_loop(session: PlaySession) -> None:
     except Exception:
         log.exception("play: loop crashed for run %s", session.run_id)
         raise
+    finally:
+        _close_recorder(session)
 
 
 async def _broadcast_binary(session: PlaySession, data: bytes) -> None:

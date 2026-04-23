@@ -9,11 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pokebenchmark_platform.catalog.db import CatalogDB
 from pokebenchmark_platform.orchestrator.container_manager import ContainerManager
-from pokebenchmark_platform.orchestrator.routes import catalog, games, play, runs, skills, ws
+from pokebenchmark_platform.orchestrator.routes import catalog, games, play, recordings, runs, skills, ws
 
 
 def create_app(
-    db_path: str = "catalog.db",
+    db_path: str = "data/catalog.db",
     container_image: str = "pokebenchmark:latest",
 ) -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -48,6 +48,8 @@ def create_app(
     app.include_router(ws.router, prefix="/ws", tags=["websocket"])
     app.include_router(play.router, prefix="/api/play", tags=["play"])
     app.include_router(play.ws_router, prefix="/ws/play", tags=["play-ws"])
+    app.include_router(recordings.router, prefix="/api/runs", tags=["recordings"])
+    app.include_router(recordings.files_router, prefix="/api/recordings", tags=["recordings"])
 
     @app.get("/api/health", tags=["health"])
     async def health() -> dict:
