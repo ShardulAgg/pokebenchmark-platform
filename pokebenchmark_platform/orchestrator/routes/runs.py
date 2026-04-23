@@ -15,6 +15,7 @@ from pokebenchmark_emulator.adapters.firered import FireRedAdapter
 from pokebenchmark_platform.catalog.models import RunEntry, SaveStateEntry
 from pokebenchmark_emulator.gba import GBAEmulator
 from pokebenchmark_platform.orchestrator.container_manager import ContainerManager
+from pokebenchmark_platform.recording.run_recorder import RunRecorder
 
 router = APIRouter()
 
@@ -108,11 +109,14 @@ async def create_run(body: CreateRunRequest, request: Request) -> dict:
                 raise HTTPException(status_code=404, detail="Save state not found")
             emulator.load_state_from_file(entry.file_path)
 
+        recorder = RunRecorder(emulator, run_id)
+        recorder.start()
         _manual_sessions(request)[run_id] = {
             "emulator": emulator,
             "adapter": adapter,
             "game": body.game,
             "rom_path": body.rom_path,
+            "recorder": recorder,
         }
 
         entry = RunEntry(
@@ -196,7 +200,11 @@ async def stop_run(run_id: str, request: Request) -> dict:
 
     sessions = _manual_sessions(request)
     if run_id in sessions:
-        sessions[run_id]["emulator"].reset()
+        sess = sessions[run_id]
+        recorder = sess.get("recorder")
+        if recorder is not None:
+            await recorder.stop()
+        sess["emulator"].reset()
         del sessions[run_id]
     elif run.container_id:
         cm = _get_container_manager(request)
