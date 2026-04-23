@@ -9,6 +9,7 @@ from typing import Any
 class PlaySession:
     run_id: str
     emulator: Any  # GBAEmulator — typed loosely to avoid a hard import cycle
+    adapter: Any = None  # GameAdapter; None disables state broadcasts
     held_keys: int = 0
     clients: set = field(default_factory=set)
     loop_task: "asyncio.Task | None" = None

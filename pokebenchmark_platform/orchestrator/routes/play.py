@@ -41,7 +41,11 @@ async def start_play(run_id: str, request: Request):
     if manual is None:
         raise HTTPException(status_code=404, detail="no active manual session for this run")
 
-    session = PlaySession(run_id=run_id, emulator=manual["emulator"])
+    session = PlaySession(
+        run_id=run_id,
+        emulator=manual["emulator"],
+        adapter=manual.get("adapter"),
+    )
     session.loop_task = asyncio.create_task(run_play_loop(session))
 
     def _on_loop_done(task: asyncio.Task) -> None:
